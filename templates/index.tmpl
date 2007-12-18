@@ -32,7 +32,7 @@
 <ul>
 #end if
 #set $previous_month = $month
-<li><a href="$image.url"><img src="$images_dir/$image.thumbnail" alt="#if $image['title'] then $image['title'] else $time.strftime('%Y/%m/%d', $image['exif']['datetime'])#"></a></li>
+<li><a href="$image.url"><img src="$images_dir/$image.thumbnail" width="$image.thumbnail_width" height="$image.thumbnail_height" alt="#if $image['title'] then $image['title'] else $time.strftime('%Y/%m/%d', $image['exif']['datetime'])#"></a></li>
 #end for
 </ul>
 
