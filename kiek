@@ -228,7 +228,7 @@ def build_site(config, options):
         if original_bytes > 1200000:
             mb, remainder = divmod(original_bytes, 1048576)
             kb, rb = divmod(remainder, 1024)
-            original_size = str(round(mb + kb/1024.0, 1)) + ' Mb'
+            original_size = str(round(mb + kb/1024.0, 1)) + 'Mb'
         else:
             original_size = str(original_bytes) + ' bytes'
 
