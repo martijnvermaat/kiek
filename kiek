@@ -243,7 +243,7 @@ def build_site(config, options):
         image = Template(file=os.path.join(config['directory'], config['templates'], 'image.tmpl'), searchList=[environment])
 
         image_file = open(os.path.join(config['directory'], config['web'], environment['url']), 'w')
-        image_file.write(str(image))
+        image_file.write(image.respond())
         image_file.close()
 
     shutil.copy(os.path.join(config['directory'], config['web'], images[len(images)-1]['url']), os.path.join(config['directory'], config['web'], 'latest'))
@@ -259,7 +259,7 @@ def build_site(config, options):
     index = Template(file=os.path.join(config['directory'], config['templates'], 'index.tmpl'), searchList=[environment])
 
     index_file = open(os.path.join(config['directory'], config['web'], 'index'), 'w')
-    index_file.write(str(index))
+    index_file.write(index.respond())
     index_file.close()
 
     environment['images'] = environment['images'][-int(config['feed_length']):]
@@ -267,7 +267,7 @@ def build_site(config, options):
     feed = Template(file=os.path.join(config['directory'], config['templates'], 'feed.tmpl'), searchList=[environment])
 
     feed_file = open(os.path.join(config['directory'], config['web'], 'feed.atom'), 'w')
-    feed_file.write(str(feed))
+    feed_file.write(feed.respond())
     feed_file.close()
 
 
