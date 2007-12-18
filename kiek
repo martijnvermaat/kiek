@@ -37,6 +37,7 @@ EXIF_TAGS = {'EXIF DateTimeOriginal'  : 'datetime',
 #   Added_date date,
 #   Image_filename varchar(50),
 #   Thumbnail_filename varchar(50),
+#   Original_filename varchar(50),
 #   Title varchar(100),
 #   Comment text
 # );
@@ -186,7 +187,7 @@ def build_site(config, options):
     connection = sqlite.connect(os.path.join(config['directory'], config['database']))
     cursor = connection.cursor()
 
-    cursor.execute("SELECT Added_date, Image_filename, Thumbnail_filename, Title, Comment"
+    cursor.execute("SELECT Added_date, Image_filename, Thumbnail_filename, Original_filename, Title, Comment"
                    " FROM Image"
                    " ORDER BY Added_date ASC")
 
@@ -214,20 +215,45 @@ def build_site(config, options):
         if 'datetime' in exif.keys():
             exif['datetime'] = time.strptime(exif['datetime'], '%Y:%m:%d %H:%M:%S')
 
-        environment = {'date'         : time.strptime(image[0], '%Y-%m-%d %H:%M:%S'),
-                       'file'         : image[1],
-                       'thumbnail'    : image[2],
-                       'title'        : image[3],
-                       'comment'      : image[4],
-                       'exif'         : exif,
-                       'sitename'     : config['sitename'],
-                       'images_dir'   : config['images'],
-                       'base_url'     : config['base_url'],
-                       'photographer' : config['photographer'],
-                       'email'        : config['email'],
-                       'website'      : config['website'],
-                       'previous'     : previous,
-                       'next'         : None}
+        file = Image.open(os.path.join(config['directory'], config['web'], config['images'], image[1]))
+        (width, height) = file.size
+
+        thumbnail = Image.open(os.path.join(config['directory'], config['web'], config['images'], image[2]))
+        (thumbnail_width, thumbnail_height) = thumbnail.size
+
+        original = Image.open(os.path.join(config['directory'], config['web'], config['images'], image[3]))
+        (original_width, original_height) = original.size
+
+        original_bytes = os.path.getsize(os.path.join(config['directory'], config['web'], config['images'], image[3]))
+        if original_bytes > 1200000:
+            mb, remainder = divmod(original_bytes, 1048576)
+            kb, rb = divmod(remainder, 1024)
+            original_size = str(round(mb + kb/1024.0, 1)) + ' Mb'
+        else:
+            original_size = str(original_bytes) + ' bytes'
+
+        environment = {'date'             : time.strptime(image[0], '%Y-%m-%d %H:%M:%S'),
+                       'file'             : image[1],
+                       'thumbnail'        : image[2],
+                       'original'         : image[3],
+                       'title'            : image[4],
+                       'comment'          : image[5],
+                       'exif'             : exif,
+                       'width'            : width,
+                       'height'           : height,
+                       'thumbnail_width'  : thumbnail_width,
+                       'thumbnail_height' : thumbnail_height,
+                       'original_width'   : original_width,
+                       'original_height'  : original_height,
+                       'original_size'    : original_size,
+                       'sitename'         : config['sitename'],
+                       'images_dir'       : config['images'],
+                       'base_url'         : config['base_url'],
+                       'photographer'     : config['photographer'],
+                       'email'            : config['email'],
+                       'website'          : config['website'],
+                       'previous'         : previous,
+                       'next'             : None}
 
         url = generate_url(environment)
 
@@ -280,7 +306,7 @@ def remove_image(config, options):
     connection = sqlite.connect(os.path.join(config['directory'], config['database']))
     cursor = connection.cursor()
 
-    cursor.execute("SELECT ID, Image_filename, Thumbnail_filename"
+    cursor.execute("SELECT ID, Image_filename, Thumbnail_filename, Original_filename"
                    " FROM Image WHERE Image_filename = ?",
                    (options['file'],))
 
@@ -294,6 +320,7 @@ def remove_image(config, options):
 
     os.remove(os.path.join(config['directory'], config['web'], config['images'], image[1]))
     os.remove(os.path.join(config['directory'], config['web'], config['images'], image[2]))
+    os.remove(os.path.join(config['directory'], config['web'], config['images'], image[3]))
 
     connection.commit()
 
@@ -333,15 +360,15 @@ def update_image(config, options):
 
 def add_image(config, options):
 
-    (resized, thumbnail) = process_image(config, options['file'])
+    (resized, thumbnail, original) = process_image(config, options['file'])
 
     connection = sqlite.connect(os.path.join(config['directory'], config['database']))
     cursor = connection.cursor()
 
     cursor.execute("INSERT INTO Image"
-                   " (Added_date, Image_filename, Thumbnail_filename, Title, Comment)"
-                   " VALUES (DATETIME('NOW'), ?, ?, ?, ?)",
-                   (resized, thumbnail, options['title'], options['comment']))
+                   " (Added_date, Image_filename, Thumbnail_filename, Original_filename, Title, Comment)"
+                   " VALUES (DATETIME('NOW'), ?, ?, ?, ?, ?)",
+                   (resized, thumbnail, original, options['title'], options['comment']))
 
     connection.commit()
 
@@ -353,9 +380,7 @@ def process_image(config, filename):
         exit(1)
 
     original_filename = tempfile.mktemp()
-    shutil.copy(filename, original_filename)
-
-    transform_orientation(original_filename)
+    shutil.copyfile(filename, original_filename)
 
     while True:
         file = str(uuid.uuid4())
@@ -364,13 +389,18 @@ def process_image(config, filename):
 
     resized_filename = file + '.jpg'
     thumbnail_filename = file + '-small.jpg'
+    copy_filename = file + '-original.jpg'
+
+    shutil.copyfile(original_filename, os.path.join(config['directory'], config['web'], config['images'], copy_filename))
+
+    transform_orientation(original_filename)
 
     store_resized(original_filename, os.path.join(config['directory'], config['web'], config['images'], resized_filename), config['max_width'], config['max_height'])
     store_thumbnail(original_filename, os.path.join(config['directory'], config['web'], config['images'], thumbnail_filename), config['thumbnail_size'])
 
     os.remove(original_filename)
 
-    return (resized_filename, thumbnail_filename)
+    return (resized_filename, thumbnail_filename, copy_filename)
 
 
 def transform_orientation(filename):
