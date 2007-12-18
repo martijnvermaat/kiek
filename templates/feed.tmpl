@@ -21,7 +21,7 @@
   <title>$sitename #if $image['title'] then $image['title'] else $time.strftime('%Y/%m/%d', $image['exif']['datetime'])#</title>
   <updated>$time.strftime('%Y-%m-%dT%H:%M:%SZ', $image['date'])</updated>
   <link href="$base_url/$image['url']"/>
-  <content type="html">&lt;img src="$base_url/$images_dir/$image['file']" &gt;></content>
+  <content type="html">&lt;img src="$base_url/$images_dir/$image['file']" &gt;</content>
 </entry>
 #end for
 
