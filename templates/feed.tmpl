@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+#silent $images.reverse()
+
+<id>tag:$email,2007-12-18:kiek/index</id>
+<title>$sitename</title>
+<link href="$base_url/feed.atom" rel="self"/>
+<link href="$base_url/index"/>
+<updated>$time.strftime('%Y-%m-%dT%H:%M:%S', $images[0]['date'])</updated>
+<author>
+  <name>$photographer</name>
+  <email>$email</email>
+  <uri>$website</uri>
+</author>
+<rights>&copy; $time.strftime('%Y') $photographer</rights>
+
+#for $image in $images
+<entry>
+  <id>tag:$email,$time.strftime('%Y-%m-%m', $image['date']):kiek/$image['file']</id>
+  <title>$sitename #if $image['title'] then $image['title'] else $time.strftime('%Y/%m/%d', $image['exif']['datetime'])#</title>
+  <updated>$time.strftime('%Y-%m-%dT%H:%M:%S', $image['date'])</updated>
+  <link href="$base_url/$image['url']"/>
+  <content type="html">&lt;img src="$base_url/images/$image['file']" &gt;></content>
+</entry>
+#end for
+
+</feed>

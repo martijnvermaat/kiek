@@ -1,0 +1,7 @@
+<FilesMatch "^[^\.]+$">
+    ForceType "text/html; charset=utf-8"
+</FilesMatch>
+
+AddType application/atom+xml .atom
+
+DirectoryIndex latest

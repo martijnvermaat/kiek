@@ -1,0 +1,53 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html lang="en">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <link rel="stylesheet" type="text/css" media="screen" href="css/screen.css">
+    <link rel="alternate" type="application/atom+xml" href="feed.atom">
+    <title>$sitename</title>
+</head>
+
+<body id="martijn-vermaat-name-kiek">
+
+<div id="page">
+
+<div id="outer">
+
+<div id="inner">
+
+<div id="index">
+
+<h1>$sitename</h1>
+
+#silent $images.reverse()
+#set $previous_month = ''
+#for $image in $images
+#set $month = $time.strftime('%Y-%m', $image['date'])
+#if $month != $previous_month
+#if $previous_month != ''
+</ul>
+#end if
+<h2>$time.strftime('%B %Y', $image['date'])</h2>
+<ul>
+#end if
+#set $previous_month = $month
+<li><a href="$image.url"><img src="images/$image.thumbnail" alt="#if $image['title'] then $image['title'] else $time.strftime('%Y/%m/%d', $image['exif']['datetime'])#"></a></li>
+#end for
+</ul>
+
+<p>
+All images are &copy; <a href="$website">$photographer</a> and licensed under a <a href="http://creativecommons.org/licenses/by-sa/3.0/">Creative Commons Attribution-Share Alike 3.0 Licence</a> (CC-BY-SA).
+</p>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+</body>
+
+</html>

@@ -1,0 +1,117 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html lang="en">
+
+#import re
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <link rel="stylesheet" type="text/css" media="screen" href="css/screen.css">
+    <script type="text/javascript" src="script/prototype.js"></script>
+    <title>$sitename $title</title>
+</head>
+
+<body id="martijn-vermaat-name-kiek">
+
+<div id="page">
+
+<div id="outer">
+
+<div id="inner">
+<img class="image" src="images/$file">
+<div id="pane">
+<div class="information">
+<p class="info"><a href="#" title="info" onclick="\$('exif').toggle(); return false;">i</a></p>
+#if $title
+<p class="title">$title</p>
+#end if
+</div>
+<div class="navigation">
+#if $previous
+<p class="previous"><a href="$previous" title="previous">&#9664;</a></p>
+#else
+<p class="previous inactive">&#9664;</p>
+#end if
+<p class="index"><a href="index" title="index">&#9650;</a></p>
+#if $next
+<p class="next"><a href="$next" title="next">&#9654;</a></p>
+#else
+<p class="next inactive">&#9654;</p>
+#end if
+</div>
+#if $comment
+<p class="comment">$comment</p>
+#end if
+<table id="exif" style="display: none;">
+#if 'datetime' in $exif
+<tr>
+<td class="tag">Date</td>
+<td class="value">$time.strftime('%Y/%m/%d', $exif['datetime'])</td>
+</tr>
+#end if
+#if 'make' in $exif and 'model' in $exif
+<tr>
+<td class="tag">Camera</td>
+<td class="value">$exif['make'] $exif['model']</td>
+</tr>
+#end if
+#if 'exposure' in $exif
+<tr>
+<td class="tag">Exposure</td>
+<td class="value">#echo $exif['exposure']#s</td>
+</tr>
+#end if
+#if 'aperture' in $exif
+<tr>
+<td class="tag">Aperture</td>
+#if $re.match(r'^[0-9]+/[0-9]+$', $exif['aperture'])
+<td class="value">f/#echo $eval(re.sub(r'([0-9]+)', 'float(\\1)', $exif['aperture']))#</td>
+#else
+<td class="value">f/#echo $exif['aperture']#</td>
+#end if
+</tr>
+#end if
+#if 'focal' in $exif
+<tr>
+<td class="tag">Focal length</td>
+#if $re.match(r'^[0-9]+/[0-9]+$', $exif['focal'])
+<td class="value">#echo $eval(re.sub(r'([0-9]+)', 'float(\\1)', $exif['focal']))#mm</td>
+#else
+<td class="value">#echo $exif['focal']#mm</td>
+#end if
+</tr>
+#end if
+#if 'iso' in $exif
+<tr>
+<td class="tag">ISO</td>
+<td class="value">$exif['iso']</td>
+</tr>
+#end if
+#if 'flash' in $exif
+<tr>
+<td class="tag">Flash</td>
+<td class="value">$exif['flash']</td>
+</tr>
+#end if
+<tr>
+<td class="tag">Uploaded</td>
+<td class="value">$time.strftime('%Y/%m/%d', $date)</td>
+</tr>
+<tr>
+<td class="tag">Copyright</td>
+<td class="value">&copy; $time.strftime('%Y', $exif['datetime']) <a href="$website">$photographer</a></td>
+</tr>
+<tr>
+<td class="tag">License</td>
+<td class="value"><a href="http://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a></td>
+</tr>
+</table>
+</div>
+</div>
+
+</div>
+
+</div>
+
+</body>
+
+</html>
