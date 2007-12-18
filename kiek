@@ -2,11 +2,12 @@
 
 
 CONFIGURATION = '~/.kiek'
+DIRECTORY = ''
 DATABASE = 'kiek.db'
+WEB = 'web'
 IMAGES = 'images'
 TEMPLATES = 'templates'
-WEB = 'web'
-SITENAME = 'kiek'
+SITENAME = 'kiek!'
 MAX_WIDTH = 640
 MAX_HEIGHT = 480
 THUMBNAIL_SIZE = 100
@@ -15,6 +16,9 @@ BASE_URL = 'http://localhost/kiek'
 PHOTOGRAPHER = 'Joe Test'
 EMAIL = 'joe@test.com'
 WEBSITE = 'http://www.test.com/'
+REMOTE_HOST = 'kiek.test.com'
+REMOTE_USER = 'joe'
+REMOTE_DIR = 'kiek'
 
 VERSION = '0.1'
 DATE = '2007/12/16'
@@ -57,12 +61,15 @@ def main():
     dispatch = {'add'    : add_image,
                 'update' : update_image,
                 'remove' : remove_image,
-                'build'  : build_site}
+                'build'  : build_site,
+                'push'   : push_site,
+                'pull'   : pull_site}
 
-    config = {'database'       : DATABASE,
+    config = {'directory'      : DIRECTORY,
+              'database'       : DATABASE,
+              'web'            : WEB,
               'images'         : IMAGES,
               'templates'      : TEMPLATES,
-              'web'            : WEB,
               'sitename'       : SITENAME,
               'max_width'      : MAX_WIDTH,
               'max_height'     : MAX_HEIGHT,
@@ -71,7 +78,10 @@ def main():
               'base_url'       : BASE_URL,
               'photographer'   : PHOTOGRAPHER,
               'email'          : EMAIL,
-              'website'        : WEBSITE}
+              'website'        : WEBSITE,
+              'remote_host'    : REMOTE_HOST,
+              'remote_user'    : REMOTE_USER,
+              'remote_dir'     : REMOTE_DIR}
 
     (action, options) = initialize()
 
@@ -103,7 +113,7 @@ def initialize():
 
     data = {}
 
-    parser = OptionParser(usage = 'usage: %prog add|update|remove|build FILE [-t TITLE]',
+    parser = OptionParser(usage = 'usage: %prog add|update|remove|build|pull|push FILE [-t TITLE]',
                           version = 'Kiek %s (%s)' % (VERSION, DATE),
                           description = 'Kiek lets you share images.')
 
@@ -129,13 +139,42 @@ def initialize():
         data['file'] = args[1]
         data['title'] = options.title
         data['comment'] = options.comment
-    elif args[0] == 'build':
+    elif args[0] in ['build', 'pull', 'push']:
         pass
     else:
-        print 'action should be one of: add, update, build'
+        print 'action should be one of: add, update, build, pull, push'
         exit(1)
 
     return (args[0], data)
+
+
+def pull_site(config, options):
+    # pull database and images
+    subprocess.Popen([r'rsync',
+                      '-e', 'ssh',
+                      '-az',
+                      config['remote_user'] + '@' + config['remote_host'] + ':' + os.path.join(config['remote_dir'], config['database']),
+                      os.path.join(config['directory'], config['database'])]).wait()
+    subprocess.Popen([r'rsync',
+                      '-e', 'ssh',
+                      '-az',
+                      '--delete',
+                      '--exclude', '.svn',
+                      '--exclude', '.htaccess',
+                      config['remote_user'] + '@' + config['remote_host'] + ':' + os.path.join(config['remote_dir'], config['web'], config['images'] + '/'),
+                      os.path.join(config['directory'], config['web'], config['images'])]).wait()
+
+
+def push_site(config, options):
+    # push entire directory
+    subprocess.Popen([r'rsync',
+                      '-e', 'ssh',
+                      '-az',
+                      '--delete',
+                      '--exclude', '.svn',
+                      '--exclude', config['templates'],
+                      config['directory'] + '/',
+                      config['remote_user'] + '@' + config['remote_host'] + ':' + config['remote_dir']]).wait()
 
 
 def build_site(config, options):
@@ -144,7 +183,7 @@ def build_site(config, options):
 
     images = []
 
-    connection = sqlite.connect(config['database'])
+    connection = sqlite.connect(os.path.join(config['directory'], config['database']))
     cursor = connection.cursor()
 
     cursor.execute("SELECT Added_date, Image_filename, Thumbnail_filename, Title, Comment"
@@ -157,7 +196,7 @@ def build_site(config, options):
 
         exif = {}
 
-        file = open(config['images'] + '/' + image[1], 'rb')
+        file = open(os.path.join(config['directory'], config['web'], config['images'], image[1]), 'rb')
         tags = EXIF.process_file(file)
 
 #        for tag in tags.keys():
@@ -182,6 +221,7 @@ def build_site(config, options):
                        'comment'      : image[4],
                        'exif'         : exif,
                        'sitename'     : config['sitename'],
+                       'images_dir'   : config['images'],
                        'base_url'     : config['base_url'],
                        'photographer' : config['photographer'],
                        'email'        : config['email'],
@@ -200,32 +240,33 @@ def build_site(config, options):
 
     for environment in images:
 
-        image = Template(file=config['templates'] + '/image.tmpl', searchList=[environment])
+        image = Template(file=os.path.join(config['directory'], config['templates'], 'image.tmpl'), searchList=[environment])
 
-        image_file = open(config['web'] + '/' + environment['url'], 'w')
+        image_file = open(os.path.join(config['directory'], config['web'], environment['url']), 'w')
         image_file.write(str(image))
         image_file.close()
 
-    shutil.copy(config['web'] + '/' + images[len(images)-1]['url'], config['web'] + '/latest')
+    shutil.copy(os.path.join(config['directory'], config['web'], images[len(images)-1]['url']), os.path.join(config['directory'], config['web'], 'latest'))
 
     environment = {'images'       : images,
                    'sitename'     : config['sitename'],
+                   'images_dir'   : config['images'],
                    'base_url'     : config['base_url'],
                    'photographer' : config['photographer'],
                    'email'        : config['email'],
                    'website'      : config['website']}
 
-    index = Template(file=config['templates'] + '/index.tmpl', searchList=[environment])
+    index = Template(file=os.path.join(config['directory'], config['templates'], 'index.tmpl'), searchList=[environment])
 
-    index_file = open(config['web'] + '/index', 'w')
+    index_file = open(os.path.join(config['directory'], config['web'], 'index'), 'w')
     index_file.write(str(index))
     index_file.close()
 
     environment['images'] = environment['images'][-int(config['feed_length']):]
 
-    feed = Template(file=config['templates'] + '/feed.tmpl', searchList=[environment])
+    feed = Template(file=os.path.join(config['directory'], config['templates'], 'feed.tmpl'), searchList=[environment])
 
-    feed_file = open(config['web'] + '/feed.atom', 'w')
+    feed_file = open(os.path.join(config['directory'], config['web'], 'feed.atom'), 'w')
     feed_file.write(str(feed))
     feed_file.close()
 
@@ -236,7 +277,7 @@ def generate_url(image):
 
 def remove_image(config, options):
 
-    connection = sqlite.connect(config['database'])
+    connection = sqlite.connect(os.path.join(config['directory'], config['database']))
     cursor = connection.cursor()
 
     cursor.execute("SELECT ID, Image_filename, Thumbnail_filename"
@@ -251,15 +292,15 @@ def remove_image(config, options):
 
     cursor.execute("DELETE FROM Image WHERE ID = ?", (image[0],))
 
-    os.remove(config['images'] + '/' + image[1])
-    os.remove(config['images'] + '/' + image[2])
+    os.remove(os.path.join(config['directory'], config['web'], config['images'], image[1]))
+    os.remove(os.path.join(config['directory'], config['web'], config['images'], image[2]))
 
     connection.commit()
 
 
 def update_image(config, options):
 
-    connection = sqlite.connect(config['database'])
+    connection = sqlite.connect(os.path.join(config['directory'], config['database']))
     cursor = connection.cursor()
 
     cursor.execute("SELECT ID, Image_filename, Title, Comment"
@@ -294,7 +335,7 @@ def add_image(config, options):
 
     (resized, thumbnail) = process_image(config, options['file'])
 
-    connection = sqlite.connect(config['database'])
+    connection = sqlite.connect(os.path.join(config['directory'], config['database']))
     cursor = connection.cursor()
 
     cursor.execute("INSERT INTO Image"
@@ -318,14 +359,14 @@ def process_image(config, filename):
 
     while True:
         file = str(uuid.uuid4())
-        if not os.path.exists(config['images'] + '/' + file + '.jpg'):
+        if not os.path.exists(os.path.join(config['directory'], config['web'], config['images'], file + '.jpg')):
             break
 
     resized_filename = file + '.jpg'
     thumbnail_filename = file + '-small.jpg'
 
-    store_resized(original_filename, config['images'] + '/' + resized_filename, config['max_width'], config['max_height'])
-    store_thumbnail(original_filename, config['images'] + '/' + thumbnail_filename, config['thumbnail_size'])
+    store_resized(original_filename, os.path.join(config['directory'], config['web'], config['images'], resized_filename), config['max_width'], config['max_height'])
+    store_thumbnail(original_filename, os.path.join(config['directory'], config['web'], config['images'], thumbnail_filename), config['thumbnail_size'])
 
     os.remove(original_filename)
 
