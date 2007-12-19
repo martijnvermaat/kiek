@@ -1,3 +1,17 @@
+/*
+   There are quite a number of ugly hacks in this stylesheet, most of which
+   are used to center the content horizontally and vertically in all
+   browsers.
+
+   Vertically centering is done in two different ways:
+   * absolute position and top -50% for all versions of IE (including IE7)
+   * table display for all other browsers
+
+   Horizontally centering is done in two different ways:
+   * text-align center for all versions of IE, except IE7
+   * auto margin-left and margin-right for alle other browsers
+*/
+
 body, html {
     height              :   100%;
     background          :   black;
@@ -16,9 +30,21 @@ body, html {
 }
 
 
-#page[id] {
-    display             :   table;
-    position            :   static;
+/*
+   This is ignored by every version of IE (including IE7) and Safari
+*/
+*:lang(en) #page {
+    display             :   table !important;
+    position            :   static !important;
+}
+
+
+/*
+   This is only seen by Safari
+*/
+#page:empty {
+    display             :   table !important;
+    position            :   static !important;
 }
 
 
@@ -28,10 +54,17 @@ body, html {
 }
 
 
-#outer[id] {
-    display             :   table-cell;
-    vertical-align      :   middle;
-    position            :   static;
+*:lang(en) #outer {
+    display             :   table-cell !important;
+    vertical-align      :   middle !important;
+    position            :   static !important;
+}
+
+
+#outer:empty {
+    display             :   table-cell !important;
+    vertical-align      :   middle !important;
+    position            :   static !important;
 }
 
 
