@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 
 
+# TODO:
+# nice favicon
+
+
 CONFIGURATION = '~/.kiek'
 DIRECTORY = ''
 DATABASE = 'kiek.db'
@@ -11,7 +15,8 @@ SITENAME = 'kiek!'
 MAX_WIDTH = 640
 MAX_HEIGHT = 480
 THUMBNAIL_SIZE = 100
-FEED_LENGTH = 15
+ATOM_SIZE = 15
+JSON_SIZE = 10
 BASE_URL = 'http://localhost/kiek'
 PHOTOGRAPHER = 'Joe Test'
 EMAIL = 'joe@test.com'
@@ -19,6 +24,7 @@ WEBSITE = 'http://www.test.com/'
 REMOTE_HOST = 'kiek.test.com'
 REMOTE_USER = 'joe'
 REMOTE_DIR = 'kiek'
+GOOGLE_ANALYTICS = ''
 
 VERSION = '0.1'
 DATE = '2007/12/16'
@@ -66,23 +72,25 @@ def main():
                 'push'   : push_site,
                 'pull'   : pull_site}
 
-    config = {'directory'      : DIRECTORY,
-              'database'       : DATABASE,
-              'web'            : WEB,
-              'images'         : IMAGES,
-              'templates'      : TEMPLATES,
-              'sitename'       : SITENAME,
-              'max_width'      : MAX_WIDTH,
-              'max_height'     : MAX_HEIGHT,
-              'thumbnail_size' : THUMBNAIL_SIZE,
-              'feed_length'    : FEED_LENGTH,
-              'base_url'       : BASE_URL,
-              'photographer'   : PHOTOGRAPHER,
-              'email'          : EMAIL,
-              'website'        : WEBSITE,
-              'remote_host'    : REMOTE_HOST,
-              'remote_user'    : REMOTE_USER,
-              'remote_dir'     : REMOTE_DIR}
+    config = {'directory'        : DIRECTORY,
+              'database'         : DATABASE,
+              'web'              : WEB,
+              'images'           : IMAGES,
+              'templates'        : TEMPLATES,
+              'sitename'         : SITENAME,
+              'max_width'        : MAX_WIDTH,
+              'max_height'       : MAX_HEIGHT,
+              'thumbnail_size'   : THUMBNAIL_SIZE,
+              'atom_size'        : ATOM_SIZE,
+              'json_size'        : JSON_SIZE,
+              'base_url'         : BASE_URL,
+              'photographer'     : PHOTOGRAPHER,
+              'email'            : EMAIL,
+              'website'          : WEBSITE,
+              'remote_host'      : REMOTE_HOST,
+              'remote_user'      : REMOTE_USER,
+              'remote_dir'       : REMOTE_DIR,
+              'google_analytics' : GOOGLE_ANALYTICS}
 
     (action, options) = initialize()
 
@@ -252,6 +260,7 @@ def build_site(config, options):
                        'photographer'     : config['photographer'],
                        'email'            : config['email'],
                        'website'          : config['website'],
+                       'google_analytics' : config['google_analytics'],
                        'previous'         : previous,
                        'next'             : None}
 
@@ -274,13 +283,14 @@ def build_site(config, options):
 
     shutil.copy(os.path.join(config['directory'], config['web'], images[len(images)-1]['url']), os.path.join(config['directory'], config['web'], 'latest'))
 
-    environment = {'images'       : images,
-                   'sitename'     : config['sitename'],
-                   'images_dir'   : config['images'],
-                   'base_url'     : config['base_url'],
-                   'photographer' : config['photographer'],
-                   'email'        : config['email'],
-                   'website'      : config['website']}
+    environment = {'images'           : images,
+                   'sitename'         : config['sitename'],
+                   'images_dir'       : config['images'],
+                   'base_url'         : config['base_url'],
+                   'photographer'     : config['photographer'],
+                   'email'            : config['email'],
+                   'website'          : config['website'],
+                   'google_analytics' : config['google_analytics']}
 
     index = Template(file=os.path.join(config['directory'], config['templates'], 'index.tmpl'), searchList=[environment])
 
@@ -288,13 +298,22 @@ def build_site(config, options):
     index_file.write(index.respond())
     index_file.close()
 
-    environment['images'] = environment['images'][-int(config['feed_length']):]
+    environment['images'] = environment['images'][-int(config['atom_size']):]
 
-    feed = Template(file=os.path.join(config['directory'], config['templates'], 'feed.tmpl'), searchList=[environment])
+    atom = Template(file=os.path.join(config['directory'], config['templates'], 'atom.tmpl'), searchList=[environment])
 
-    feed_file = open(os.path.join(config['directory'], config['web'], 'feed.atom'), 'w')
-    feed_file.write(feed.respond())
-    feed_file.close()
+    atom_file = open(os.path.join(config['directory'], config['web'], 'feed.atom'), 'w')
+    atom_file.write(atom.respond())
+    atom_file.close()
+
+    # TODO: we assume json_size < atom_size
+    environment['images'] = environment['images'][-int(config['json_size']):]
+
+    json = Template(file=os.path.join(config['directory'], config['templates'], 'json.tmpl'), searchList=[environment])
+
+    json_file = open(os.path.join(config['directory'], config['web'], 'feed.json'), 'w')
+    json_file.write(json.respond())
+    json_file.close()
 
 
 def generate_url(image):
