@@ -3,5 +3,6 @@
 </FilesMatch>
 
 AddType application/atom+xml .atom
+AddType application/javascript .json
 
 DirectoryIndex latest

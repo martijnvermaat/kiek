@@ -1,0 +1,13 @@
+if(typeof(Kiek) == 'undefined')
+    Kiek = {};
+
+#silent $images.reverse()
+
+Kiek.images = [
+#for $image in $images
+               {'url'       : '$base_url/$image['url']',
+                'file'      : '$base_url/$images_dir/$image['file']',
+                'thumbnail' : '$base_url/$images_dir/$image['thumbnail']',
+                'title'     : '#if $image['title'] then $image['title'] else $time.strftime('%Y/%m/%d', $image['exif']['datetime'])#'},
+#end for
+               ];
