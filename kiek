@@ -3,6 +3,8 @@
 
 # TODO:
 # nice favicon
+# some feedback to the user on what is happening
+# query existing images
 
 
 CONFIGURATION = '~/.kiek'
