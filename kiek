@@ -38,16 +38,6 @@ EXIF_TAGS = {'EXIF DateTimeOriginal'  : 'datetime',
              'Image Make'             : 'make',
              'EXIF ISOSpeedRatings'   : 'iso'}
 
-# CREATE TABLE Image(
-#   ID integer primary key,
-#   Added_date date,
-#   Image_filename varchar(50),
-#   Thumbnail_filename varchar(50),
-#   Original_filename varchar(50),
-#   Title varchar(100),
-#   Comment text
-# );
-
 
 import os
 import shutil
@@ -158,32 +148,54 @@ def initialize():
 
 
 def pull_site(config, options):
+
     # pull database and images
-    subprocess.Popen([r'rsync',
-                      '-e', 'ssh',
-                      '-az',
-                      config['remote_user'] + '@' + config['remote_host'] + ':' + os.path.join(config['remote_dir'], config['database']),
-                      os.path.join(config['directory'], config['database'])]).wait()
-    subprocess.Popen([r'rsync',
-                      '-e', 'ssh',
-                      '-az',
-                      '--delete',
-                      '--exclude', '.svn',
-                      '--exclude', '.htaccess',
-                      config['remote_user'] + '@' + config['remote_host'] + ':' + os.path.join(config['remote_dir'], config['web'], config['images'] + '/'),
-                      os.path.join(config['directory'], config['web'], config['images'])]).wait()
+
+    try:
+        p = subprocess.Popen([r'rsync',
+                              '-e', 'ssh',
+                              '-az',
+                              config['remote_user'] + '@' + config['remote_host'] + ':' + os.path.join(config['remote_dir'], config['database']),
+                              os.path.join(config['directory'], config['database'])])
+    except OSError:
+        print 'Error running rsync'
+        exit(1)
+    else:
+        p.wait()
+
+    try:
+        p = subprocess.Popen([r'rsync',
+                              '-e', 'ssh',
+                              '-az',
+                              '--delete',
+                              '--exclude', '.svn',
+                              '--exclude', '.htaccess',
+                              config['remote_user'] + '@' + config['remote_host'] + ':' + os.path.join(config['remote_dir'], config['web'], config['images'] + '/'),
+                              os.path.join(config['directory'], config['web'], config['images'])])
+    except OSError:
+        print 'Error running rsync'
+        exit(1)
+    else:
+        p.wait()
 
 
 def push_site(config, options):
+
     # push entire directory
-    subprocess.Popen([r'rsync',
-                      '-e', 'ssh',
-                      '-az',
-                      '--delete',
-                      '--exclude', '.svn',
-                      '--exclude', config['templates'],
-                      config['directory'] + '/',
-                      config['remote_user'] + '@' + config['remote_host'] + ':' + config['remote_dir']]).wait()
+
+    try:
+        p = subprocess.Popen([r'rsync',
+                              '-e', 'ssh',
+                              '-az',
+                              '--delete',
+                              '--exclude', '.svn',
+                              '--exclude', config['templates'],
+                              config['directory'] + '/',
+                              config['remote_user'] + '@' + config['remote_host'] + ':' + config['remote_dir']]).wait()
+    except OSError:
+        print ''
+    else:
+        p.wait()
 
 
 def build_site(config, options):
@@ -423,14 +435,26 @@ def process_image(config, filename):
 
 
 def transform_orientation(filename):
-    subprocess.Popen([r'exifautotran', filename]).wait()
+    try:
+        p = subprocess.Popen([r'exifautotran', filename])
+    except OSError:
+        print 'Error running exifautotran'
+        exit(1)
+    else:
+        p.wait()
 
 
 def store_resized(original_filename, resized_filename, max_width, max_height):
-    subprocess.Popen([r'convert',
-                      original_filename,
-                      '-resize', str(max_width) + 'x' + str(max_height) + '>',
-                      resized_filename]).wait()
+    try:
+        p = subprocess.Popen([r'convert',
+                              original_filename,
+                              '-resize', str(max_width) + 'x' + str(max_height) + '>',
+                              resized_filename])
+    except OSError:
+        print 'Error running convert (from the ImageMagick suite)'
+        exit(1)
+    else:
+        p.wait()
 
 
 def store_thumbnail(original_filename, thumbnail_filename, dimensions):
@@ -443,13 +467,19 @@ def store_thumbnail(original_filename, thumbnail_filename, dimensions):
     else:
         resize = str(dimensions) + 'x'
 
-    subprocess.Popen([r'convert',
-                      original_filename,
-                      '-thumbnail', resize,
-                      '-gravity', 'center',
-                      '-crop', str(dimensions) + 'x' + str(dimensions) + '+0+0',
-                      '+repage',
-                      thumbnail_filename]).wait()
+    try:
+        p = subprocess.Popen([r'convert',
+                              original_filename,
+                              '-thumbnail', resize,
+                              '-gravity', 'center',
+                              '-crop', str(dimensions) + 'x' + str(dimensions) + '+0+0',
+                              '+repage',
+                              thumbnail_filename])
+    except OSError:
+        print 'Error running convert (from the ImageMagick suit)'
+        exit(1)
+    else:
+        p.wait()
 
 
 if __name__ == '__main__':

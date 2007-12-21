@@ -1,0 +1,46 @@
+Dependencies:
+
+Python 2.5 or higher
+PIL (Python Imaging Library)
+EXIF.py (part of kiek! for now)
+Cheetah
+pysqlite2
+exifautotran
+ImageMagick
+rsync
+
+Database schema:
+
+CREATE TABLE Image(
+  ID integer primary key,
+  Added_date date,
+  Image_filename varchar(50),
+  Thumbnail_filename varchar(50),
+  Original_filename varchar(50),
+  Title varchar(100),
+  Comment text
+);
+
+kiek! looks for a file containing site configurations in ~/.kiek
+
+A site configuration looks like this:
+
+[martijn]
+directory = /home/martijn/projects/kiek-martijn/trunk
+sitename = kiek!
+max_width = 700
+max_height = 500
+thumbnail_size = 80
+atom_size = 10
+json_size = 5
+base_url = http://martijn.vermaat.name/kiek
+photographer = Martijn Vermaat
+email = martijn@vermaat.name
+website = http://martijn.vermaat.name/
+remote_host = vermaat.name
+remote_user = vermaat
+remote_dir = /home/vermaat/kiek
+google_analytics = UA-2972082-2
+
+The directory configuration value should refer to a directory containing
+a database file, template files and a web directory.
