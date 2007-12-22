@@ -60,6 +60,7 @@ def main():
     dispatch = {'add'    : add_image,
                 'update' : update_image,
                 'remove' : remove_image,
+                'query'  : query_site,
                 'build'  : build_site,
                 'push'   : push_site,
                 'pull'   : pull_site}
@@ -114,9 +115,11 @@ def initialize():
 
     data = {}
 
-    parser = OptionParser(usage = 'usage: %prog add|update|remove|build|pull|push FILE [-t TITLE]',
-                          version = 'Kiek %s (%s)' % (VERSION, DATE),
-                          description = 'Kiek lets you share images.')
+    parser = OptionParser(usage = "usage: %prog"
+                          " add|update|remove|query|build|pull|push"
+                          " FILE [-t TITLE]",
+                          version = 'kiek! %s (%s)' % (VERSION, DATE),
+                          description = 'kiek! lets you share images.')
 
     parser.add_option('-s', '--site', dest='site', metavar='SITE',
                       help='use configuration for SITE')
@@ -140,10 +143,14 @@ def initialize():
         data['file'] = args[1]
         data['title'] = options.title
         data['comment'] = options.comment
+    elif args[0] == 'query':
+        if len(args) >= 2:
+            data['file'] = args[1]
     elif args[0] in ['build', 'pull', 'push']:
         pass
     else:
-        print 'action should be one of: add, update, build, pull, push'
+        print "action should be one of:"
+        " add, update, remove, query, build, pull, push"
         exit(1)
 
     return (args[0], data)
@@ -153,63 +160,92 @@ def pull_site(config, options):
 
     # pull database and images
 
-    try:
-        p = subprocess.Popen([r'rsync',
-                              '-e', 'ssh',
-                              '-az',
-                              config['remote_user'] + '@' + config['remote_host'] + ':' + os.path.join(config['remote_dir'], config['database']),
-                              os.path.join(config['directory'], config['database'])])
-    except OSError:
-        print 'Error running rsync'
-        exit(1)
-    else:
-        p.wait()
+    print 'Synchronizing local site with remote site'
+
+    arguments = [r'rsync',
+                 '-e', 'ssh',
+                 '-azv',
+                 config['remote_user'] + '@' + config['remote_host'] + ':'
+                 + os.path.join(config['remote_dir'],
+                                config['database']),
+                 os.path.join(config['directory'],
+                              config['database'])]
+
+    print 'Running: ' + ' '.join(arguments)
 
     try:
-        p = subprocess.Popen([r'rsync',
-                              '-e', 'ssh',
-                              '-az',
-                              '--delete',
-                              '--exclude', '.svn',
-                              '--exclude', '.htaccess',
-                              config['remote_user'] + '@' + config['remote_host'] + ':' + os.path.join(config['remote_dir'], config['web'], config['images'] + '/'),
-                              os.path.join(config['directory'], config['web'], config['images'])])
+        process = subprocess.Popen(arguments)
     except OSError:
         print 'Error running rsync'
         exit(1)
     else:
-        p.wait()
+        process.wait()
+
+    arguments = [r'rsync',
+                 '-e', 'ssh',
+                 '-azv',
+                 '--delete',
+                 '--exclude', '.svn',
+                 '--exclude', '.htaccess',
+                 config['remote_user'] + '@' + config['remote_host']+ ':'
+                 + os.path.join(config['remote_dir'],
+                                config['web'],
+                                config['images'] + '/'),
+                 os.path.join(config['directory'],
+                              config['web'],
+                              config['images'])]
+
+    print 'Running: ' + ' '.join(arguments)
+
+    try:
+        process = subprocess.Popen(arguments)
+    except OSError:
+        print 'Error running rsync'
+        exit(1)
+    else:
+        process.wait()
 
 
 def push_site(config, options):
 
-    # push entire directory
+    # Push entire directory
+
+    print 'Synchronizing remote site with local site'
+
+    arguments = [r'rsync',
+                 '-e', 'ssh',
+                 '-azv',
+                 '--delete',
+                 '--exclude', '.svn',
+                 '--exclude', config['templates'],
+                 config['directory'] + '/',
+                 config['remote_user'] + '@' + config['remote_host']
+                 + ':' + config['remote_dir']]
+
+    print 'Running: ' + ' '.join(arguments)
 
     try:
-        p = subprocess.Popen([r'rsync',
-                              '-e', 'ssh',
-                              '-az',
-                              '--delete',
-                              '--exclude', '.svn',
-                              '--exclude', config['templates'],
-                              config['directory'] + '/',
-                              config['remote_user'] + '@' + config['remote_host'] + ':' + config['remote_dir']]).wait()
+        process = subprocess.Popen(arguments)
     except OSError:
-        print ''
+        print 'Error running rsync'
     else:
-        p.wait()
+        process.wait()
 
 
 def build_site(config, options):
 
     # TODO: clean up old files
 
+    print 'Building site'
+
     images = []
 
-    connection = sqlite.connect(os.path.join(config['directory'], config['database']))
+    connection = sqlite.connect(os.path.join(config['directory'],
+                                             config['database']))
     cursor = connection.cursor()
 
-    cursor.execute("SELECT Added_date, Image_filename, Thumbnail_filename, Original_filename, Title, Comment"
+    cursor.execute("SELECT Added_date, Image_filename, Thumbnail_filename,"
+                   " Original_filename, Title, Comment"
                    " FROM Image"
                    " ORDER BY Added_date ASC")
 
@@ -219,7 +255,11 @@ def build_site(config, options):
 
         exif = {}
 
-        file = open(os.path.join(config['directory'], config['web'], config['images'], image[1]), 'rb')
+        file = open(os.path.join(config['directory'],
+                                 config['web'],
+                                 config['images'],
+                                 image[1]),
+                    'rb')
         tags = EXIF.process_file(file)
 
 #        for tag in tags.keys():
@@ -235,18 +275,31 @@ def build_site(config, options):
                 pass
 
         if 'datetime' in exif.keys():
-            exif['datetime'] = time.strptime(exif['datetime'], '%Y:%m:%d %H:%M:%S')
+            exif['datetime'] = time.strptime(exif['datetime'],
+                                             '%Y:%m:%d %H:%M:%S')
 
-        file = Image.open(os.path.join(config['directory'], config['web'], config['images'], image[1]))
+        file = Image.open(os.path.join(config['directory'],
+                                       config['web'],
+                                       config['images'],
+                                       image[1]))
         (width, height) = file.size
 
-        thumbnail = Image.open(os.path.join(config['directory'], config['web'], config['images'], image[2]))
+        thumbnail = Image.open(os.path.join(config['directory'],
+                                            config['web'],
+                                            config['images'],
+                                            image[2]))
         (thumbnail_width, thumbnail_height) = thumbnail.size
 
-        original = Image.open(os.path.join(config['directory'], config['web'], config['images'], image[3]))
+        original = Image.open(os.path.join(config['directory'],
+                                           config['web'],
+                                           config['images'],
+                                           image[3]))
         (original_width, original_height) = original.size
 
-        original_bytes = os.path.getsize(os.path.join(config['directory'], config['web'], config['images'], image[3]))
+        original_bytes = os.path.getsize(os.path.join(config['directory'],
+                                                      config['web'],
+                                                      config['images'],
+                                                      image[3]))
         if original_bytes > 1200000:
             mb, remainder = divmod(original_bytes, 1048576)
             kb, rb = divmod(remainder, 1024)
@@ -254,7 +307,8 @@ def build_site(config, options):
         else:
             original_size = str(original_bytes) + ' bytes'
 
-        environment = {'date'             : time.strptime(image[0], '%Y-%m-%d %H:%M:%S'),
+        environment = {'date'             : time.strptime(image[0],
+                                                          '%Y-%m-%d %H:%M:%S'),
                        'file'             : image[1],
                        'thumbnail'        : image[2],
                        'original'         : image[3],
@@ -289,13 +343,23 @@ def build_site(config, options):
 
     for environment in images:
 
-        image = Template(file=os.path.join(config['directory'], config['templates'], 'image.tmpl'), searchList=[environment])
+        image = Template(file=os.path.join(config['directory'],
+                                           config['templates'],
+                                           'image.tmpl'),
+                         searchList=[environment])
 
-        image_file = open(os.path.join(config['directory'], config['web'], environment['url']), 'w')
+        image_file = open(os.path.join(config['directory'],
+                                       config['web'],
+                                       environment['url']), 'w')
         image_file.write(image.respond())
         image_file.close()
 
-    shutil.copy(os.path.join(config['directory'], config['web'], images[len(images)-1]['url']), os.path.join(config['directory'], config['web'], 'latest'))
+    shutil.copy(os.path.join(config['directory'],
+                             config['web'],
+                             images[len(images)-1]['url']),
+                os.path.join(config['directory'],
+                             config['web'],
+                             'latest'))
 
     environment = {'images'           : images,
                    'sitename'         : config['sitename'],
@@ -306,26 +370,44 @@ def build_site(config, options):
                    'website'          : config['website'],
                    'google_analytics' : config['google_analytics']}
 
-    index = Template(file=os.path.join(config['directory'], config['templates'], 'index.tmpl'), searchList=[environment])
+    index = Template(file=os.path.join(config['directory'],
+                                       config['templates'],
+                                       'index.tmpl'),
+                     searchList=[environment])
 
-    index_file = open(os.path.join(config['directory'], config['web'], 'index'), 'w')
+    index_file = open(os.path.join(config['directory'],
+                                   config['web'],
+                                   'index'),
+                      'w')
     index_file.write(index.respond())
     index_file.close()
 
     environment['images'] = environment['images'][-int(config['atom_size']):]
 
-    atom = Template(file=os.path.join(config['directory'], config['templates'], 'atom.tmpl'), searchList=[environment])
+    atom = Template(file=os.path.join(config['directory'],
+                                      config['templates'],
+                                      'atom.tmpl'),
+                    searchList=[environment])
 
-    atom_file = open(os.path.join(config['directory'], config['web'], 'feed.atom'), 'w')
+    atom_file = open(os.path.join(config['directory'],
+                                  config['web'],
+                                  'feed.atom'),
+                     'w')
     atom_file.write(atom.respond())
     atom_file.close()
 
     # TODO: we assume json_size < atom_size
     environment['images'] = environment['images'][-int(config['json_size']):]
 
-    json = Template(file=os.path.join(config['directory'], config['templates'], 'json.tmpl'), searchList=[environment])
+    json = Template(file=os.path.join(config['directory'],
+                                      config['templates'],
+                                      'json.tmpl'),
+                    searchList=[environment])
 
-    json_file = open(os.path.join(config['directory'], config['web'], 'feed.json'), 'w')
+    json_file = open(os.path.join(config['directory'],
+                                  config['web'],
+                                  'feed.json'),
+                     'w')
     json_file.write(json.respond())
     json_file.close()
 
@@ -336,10 +418,14 @@ def generate_url(image):
 
 def remove_image(config, options):
 
-    connection = sqlite.connect(os.path.join(config['directory'], config['database']))
+    print 'Removing image: ' + options['file']
+
+    connection = sqlite.connect(os.path.join(config['directory'],
+                                             config['database']))
     cursor = connection.cursor()
 
-    cursor.execute("SELECT ID, Image_filename, Thumbnail_filename, Original_filename"
+    cursor.execute("SELECT ID, Image_filename, Thumbnail_filename,"
+                   " Original_filename"
                    " FROM Image WHERE Image_filename = ?",
                    (options['file'],))
 
@@ -351,16 +437,28 @@ def remove_image(config, options):
 
     cursor.execute("DELETE FROM Image WHERE ID = ?", (image[0],))
 
-    os.remove(os.path.join(config['directory'], config['web'], config['images'], image[1]))
-    os.remove(os.path.join(config['directory'], config['web'], config['images'], image[2]))
-    os.remove(os.path.join(config['directory'], config['web'], config['images'], image[3]))
+    os.remove(os.path.join(config['directory'],
+                           config['web'],
+                           config['images'],
+                           image[1]))
+    os.remove(os.path.join(config['directory'],
+                           config['web'],
+                           config['images'],
+                           image[2]))
+    os.remove(os.path.join(config['directory'],
+                           config['web'],
+                           config['images'],
+                           image[3]))
 
     connection.commit()
 
 
 def update_image(config, options):
 
-    connection = sqlite.connect(os.path.join(config['directory'], config['database']))
+    print 'Updating image: ' + options['file']
+
+    connection = sqlite.connect(os.path.join(config['directory'],
+                                             config['database']))
     cursor = connection.cursor()
 
     cursor.execute("SELECT ID, Image_filename, Title, Comment"
@@ -393,17 +491,85 @@ def update_image(config, options):
 
 def add_image(config, options):
 
+    print 'Adding image: ' + options['file']
+
     (resized, thumbnail, original) = process_image(config, options['file'])
 
-    connection = sqlite.connect(os.path.join(config['directory'], config['database']))
+    connection = sqlite.connect(os.path.join(config['directory'],
+                                             config['database']))
     cursor = connection.cursor()
 
     cursor.execute("INSERT INTO Image"
-                   " (Added_date, Image_filename, Thumbnail_filename, Original_filename, Title, Comment)"
+                   " (Added_date, Image_filename, Thumbnail_filename,"
+                   "  Original_filename, Title, Comment)"
                    " VALUES (DATETIME('NOW'), ?, ?, ?, ?, ?)",
-                   (resized, thumbnail, original, options['title'], options['comment']))
+                   (resized,
+                    thumbnail,
+                    original,
+                    options['title'],
+                    options['comment']))
 
     connection.commit()
+
+    print 'Image stored as: ' + resized
+
+
+def query_site(config, options):
+
+    if 'file' in options.keys():
+        query_image(config, options)
+    else:
+        query_images(config, options)
+
+
+def query_image(config, options):
+
+    connection = sqlite.connect(os.path.join(config['directory'],
+                                             config['database']))
+    cursor = connection.cursor()
+
+    cursor.execute("SELECT Added_date, Image_filename, Title, Comment"
+                   " FROM Image"
+                   " WHERE Image_filename = ?",
+                   (options['file'],))
+
+    image = cursor.fetchone()
+
+    if not image:
+        print 'file is not in database: %s' % options['file']
+        exit(1)
+
+    print image[1]
+    print 'Added: %s' % image[0]
+    if image[2]:
+        print 'Title: %s' % image[2]
+    if image[3]:
+        print 'Comment: %s' % image[3]
+
+
+def query_images(config, options):
+
+    connection = sqlite.connect(os.path.join(config['directory'],
+                                             config['database']))
+    cursor = connection.cursor()
+
+    cursor.execute("SELECT Added_date, Image_filename, Title, Comment"
+                   " FROM Image"
+                   " ORDER BY Added_date ASC")
+
+    count = 0
+
+    for image in cursor:
+        count += 1
+        print image[1]
+        print 'Added: %s' % image[0]
+        if image[2]:
+            print 'Title: %s' % image[2]
+        if image[3]:
+            print 'Comment: %s' % image[3]
+        print
+
+    print '%d images in database' % count
 
 
 def process_image(config, filename):
@@ -417,19 +583,37 @@ def process_image(config, filename):
 
     while True:
         file = str(uuid.uuid4())
-        if not os.path.exists(os.path.join(config['directory'], config['web'], config['images'], file + '.jpg')):
+        if not os.path.exists(os.path.join(config['directory'],
+                                           config['web'],
+                                           config['images'],
+                                           file + '.jpg')):
             break
 
     resized_filename = file + '.jpg'
     thumbnail_filename = file + '-small.jpg'
     copy_filename = file + '-original.jpg'
 
-    shutil.copyfile(original_filename, os.path.join(config['directory'], config['web'], config['images'], copy_filename))
+    shutil.copyfile(original_filename, os.path.join(config['directory'],
+                                                    config['web'],
+                                                    config['images'],
+                                                    copy_filename))
 
     transform_orientation(original_filename)
 
-    store_resized(original_filename, os.path.join(config['directory'], config['web'], config['images'], resized_filename), config['max_width'], config['max_height'])
-    store_thumbnail(original_filename, os.path.join(config['directory'], config['web'], config['images'], thumbnail_filename), config['thumbnail_size'])
+    store_resized(original_filename,
+                  os.path.join(config['directory'],
+                               config['web'],
+                               config['images'],
+                               resized_filename),
+                  config['max_width'],
+                  config['max_height'])
+
+    store_thumbnail(original_filename,
+                    os.path.join(config['directory'],
+                                 config['web'],
+                                 config['images'],
+                                 thumbnail_filename),
+                    config['thumbnail_size'])
 
     os.remove(original_filename)
 
@@ -437,26 +621,36 @@ def process_image(config, filename):
 
 
 def transform_orientation(filename):
+
+    arguments = [r'exifautotran', filename]
+
+    print 'Running: ' + ' '.join(arguments)
+
     try:
-        p = subprocess.Popen([r'exifautotran', filename])
+        process = subprocess.Popen(arguments)
     except OSError:
         print 'Error running exifautotran'
         exit(1)
     else:
-        p.wait()
+        process.wait()
 
 
 def store_resized(original_filename, resized_filename, max_width, max_height):
+
+    arguments = [r'convert',
+                 original_filename,
+                 '-resize', str(max_width) + 'x' + str(max_height) + '>',
+                 resized_filename]
+
+    print 'Running: ' + ' '.join(arguments)
+
     try:
-        p = subprocess.Popen([r'convert',
-                              original_filename,
-                              '-resize', str(max_width) + 'x' + str(max_height) + '>',
-                              resized_filename])
+        process = subprocess.Popen(arguments)
     except OSError:
         print 'Error running convert (from the ImageMagick suite)'
         exit(1)
     else:
-        p.wait()
+        process.wait()
 
 
 def store_thumbnail(original_filename, thumbnail_filename, dimensions):
@@ -469,19 +663,23 @@ def store_thumbnail(original_filename, thumbnail_filename, dimensions):
     else:
         resize = str(dimensions) + 'x'
 
+    arguments = [r'convert',
+                 original_filename,
+                 '-thumbnail', resize,
+                 '-gravity', 'center',
+                 '-crop', str(dimensions) + 'x' + str(dimensions) + '+0+0',
+                 '+repage',
+                 thumbnail_filename]
+
+    print 'Running: ' + ' '.join(arguments)
+
     try:
-        p = subprocess.Popen([r'convert',
-                              original_filename,
-                              '-thumbnail', resize,
-                              '-gravity', 'center',
-                              '-crop', str(dimensions) + 'x' + str(dimensions) + '+0+0',
-                              '+repage',
-                              thumbnail_filename])
+        process = subprocess.Popen(arguments)
     except OSError:
         print 'Error running convert (from the ImageMagick suit)'
         exit(1)
     else:
-        p.wait()
+        process.wait()
 
 
 if __name__ == '__main__':
