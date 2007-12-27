@@ -100,7 +100,7 @@
 </tr>
 <tr>
 <td class="tag">Copyright</td>
-<td class="value">&copy; $time.strftime('%Y', $exif['datetime']) <a href="$website">$photographer</a></td>
+<td class="value">&copy; #if 'datetime' in $exif then $time.strftime('%Y', $exif['datetime']) else $time.strftime('%Y', $date)# <a href="$website">$photographer</a></td>
 </tr>
 <tr>
 <td class="tag">License</td>
