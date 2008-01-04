@@ -1,13 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
 
-#silent $images.reverse()
-
 <id>tag:$email,2007-12-18:kiek/index</id>
 <title>$sitename</title>
 <link href="$base_url/feed.atom" rel="self"/>
 <link href="$base_url/index"/>
-<updated>$time.strftime('%Y-%m-%dT%H:%M:%SZ', $images[0]['date'])</updated>
+<updated>$time.strftime('%Y-%m-%dT%H:%M:%SZ', $images[len($images)-1]['date'])</updated>
 <author>
   <name>$photographer</name>
   <email>$email</email>
@@ -15,7 +13,7 @@
 </author>
 <rights>&#169; $time.strftime('%Y') $photographer</rights>
 
-#for $image in $images
+#for $image in reversed($images)
 <entry>
   <id>tag:$email,$time.strftime('%Y-%m-%m', $image['date']):kiek/$image['file']</id>
   <title>$sitename #if $image['title'] then $image['title'] else $time.strftime('%Y/%m/%d', $image['exif']['datetime'])#</title>

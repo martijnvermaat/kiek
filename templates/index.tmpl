@@ -20,9 +20,8 @@
 
 <h1>$sitename</h1>
 
-#silent $images.reverse()
 #set $previous_month = ''
-#for $image in $images
+#for $image in reversed($images)
 #set $month = $time.strftime('%Y-%m', $image['date'])
 #if $month != $previous_month
 #if $previous_month != ''
