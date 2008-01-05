@@ -149,8 +149,8 @@ def initialize():
     elif args[0] in ['build', 'pull', 'push']:
         pass
     else:
-        print "action should be one of:"
-        " add, update, remove, query, build, pull, push"
+        print "action should be one of:",
+        print "add, update, remove, query, build, pull, push"
         exit(1)
 
     return (args[0], data)
