@@ -54,6 +54,11 @@ body, html {
 }
 
 
+.index #outer {
+    top                 :   0;
+}
+
+
 *:lang(en) #outer {
     display             :   table-cell !important;
     vertical-align      :   middle !important;
@@ -75,6 +80,11 @@ body, html {
     text-align          :   center;
     margin-top          :   1.5em;
     margin-bottom       :   1.5em;
+}
+
+
+.index #inner {
+    top                 :   0;
 }
 
 
