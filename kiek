@@ -2,8 +2,6 @@
 
 
 # TODO:
-# nice favicon
-# some feedback to the user on what is happening
 # query existing images
 
 
@@ -41,6 +39,7 @@ EXIF_TAGS = {'EXIF DateTimeOriginal'  : 'datetime',
              'EXIF ISOSpeedRatings'   : 'iso'}
 
 
+import sys
 import os
 import shutil
 import time
@@ -50,6 +49,7 @@ import uuid
 import Image
 import EXIF
 import subprocess
+import progressbar
 from Cheetah.Template import Template
 from optparse import OptionParser
 from pysqlite2 import dbapi2 as sqlite
@@ -117,7 +117,7 @@ def initialize():
 
     parser = OptionParser(usage = "usage: %prog"
                           " add|update|remove|query|build|pull|push"
-                          " FILE [-t TITLE]",
+                          " FILE [-s SITE] [-t TITLE] [-c COMMENT]",
                           version = 'kiek! %s (%s)' % (VERSION, DATE),
                           description = 'kiek! lets you share images.')
 
@@ -249,9 +249,19 @@ def build_site(config, options):
                    " FROM Image"
                    " ORDER BY Added_date ASC")
 
+    rows = cursor.fetchall()
+
     previous = None
 
-    for image in cursor:
+    n = 0
+    progress = progressbar.ProgressBar(maxval=len(rows),
+                                       widgets=[progressbar.XofY(),
+                                                ' ',
+                                                progressbar.Bar(),
+                                                ' ',
+                                                progressbar.Percentage()]).start()
+
+    for image in rows:
 
         exif = {}
 
@@ -340,6 +350,11 @@ def build_site(config, options):
             images[len(images)-1]['next'] = url
 
         images.append(environment)
+
+        n = n+1
+        progress.update(n)
+
+    progress.finish()
 
     for environment in images:
 
