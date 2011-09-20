@@ -1,0 +1,10 @@
+kiek! templates for Martijn Vermaat's photoblog
+===============================================
+
+Templates for my photoblog [1]. These go with the kiek! static photoblog
+generator, located in the `master` branch of this repository.
+
+Copyright (c) 2007, Martijn Vermaat <martijn@vermaat.name>
+Licensed under the BSD license, see the LICENSE file.
+
+[1] http://martijn.vermaat.name/kiek
